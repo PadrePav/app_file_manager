@@ -7,7 +7,7 @@ import {Folder} from "./entity/folder.entity";
 
 
 @Injectable()
-export class UserService {
+export class UsersService {
 
   constructor(@InjectRepository(User) private readonly userRepository: Repository<User>,
               @InjectRepository(Folder) private readonly folderRepository: Repository<Folder>) {}
@@ -16,9 +16,13 @@ export class UserService {
     const user = await this.userRepository.findOne({
       where: {
         name
+      },
+      relations: {
+        space: true
       }
     })
     if (user) {
+      console.log(user)
       return user
     }
     throw new HttpException('User with this email does not exist', HttpStatus.NOT_FOUND)
