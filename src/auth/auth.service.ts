@@ -4,10 +4,12 @@ import AuthDto from "./dto/auth.dto";
 import * as bcrypt from 'bcrypt'
 import PostgresErrorCode from "./error-handler-ps/postgress.error";
 import {User} from "../data-base/entity/user.entity";
+import {JwtService} from "@nestjs/jwt";
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly usersService: UsersService) {};
+  constructor(private readonly usersService: UsersService,
+              private readonly jwt: JwtService) {};
 
   async signup(data: AuthDto): Promise<User> {
     const hashedPassword = bcrypt.hashSync(data.password, 10);
@@ -26,7 +28,7 @@ export class AuthService {
 
   async signIn(data: AuthDto): Promise<User> {
     try {
-      const user = await this.usersService.getByName(data.name);
+      const user = await this.usersService.getByName(data.userName);
       await this.verifyPassword(data.password, user.password )
       delete user.password
       return user
@@ -43,5 +45,13 @@ export class AuthService {
     if (!isPasswordMatching) {
       throw new HttpException('Wrong credentials provided', HttpStatus.BAD_REQUEST);
     }
+  }
+
+  signToken(userId: number, userName: string) {
+    const payload = {
+      sub: userId,
+      userName
+    }
+    return this.jwt.sign(payload)
   }
 }

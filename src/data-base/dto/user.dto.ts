@@ -3,7 +3,7 @@ import {IsNotEmpty, IsString, MinLength} from "class-validator";
 class UserDto {
   @IsNotEmpty()
   @IsString()
-  name: string;
+  userName: string;
 
   @IsNotEmpty()
   @IsString()

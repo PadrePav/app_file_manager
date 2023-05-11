@@ -13,10 +13,10 @@ export class User {
   @PrimaryGeneratedColumn({
     type: 'bigint'
   })
-  id: number;
+  userId: number;
 
   @Column({nullable: false, unique: true})
-  name: string;
+  userName: string;
 
   @Column({nullable: false})
   password: string;

@@ -12,10 +12,10 @@ export class UsersService {
   constructor(@InjectRepository(User) private readonly userRepository: Repository<User>,
               @InjectRepository(Folder) private readonly folderRepository: Repository<Folder>) {}
 
-  async getByName(name: string) {
+  async getByName(userName: string) {
     const user = await this.userRepository.findOne({
       where: {
-        name
+        userName
       },
       relations: {
         space: true
