@@ -11,7 +11,7 @@ import {File} from "./file.entity";
 @Entity()
 export class Folder {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  folderId: string;
 
   @Column({nullable: false})
   name: string;
@@ -25,7 +25,6 @@ export class Folder {
   @OneToMany(() => Folder, (folder) => folder.parent_folder)
   folders: Folder[];
 
-  @OneToMany(() => File, file => file.parent_folder, {cascade: true})
-  @JoinColumn()
+  @OneToMany(() => File, file => file.parent_folder)
   files: File[];
 }

@@ -1,9 +1,8 @@
 import {HttpException, HttpStatus, Injectable} from "@nestjs/common";
-import {UsersService} from "../data-base/data-base.users.service";
+import {UsersService} from "../data-base/user/data-base.users.service";
 import AuthDto from "./dto/auth.dto";
 import * as bcrypt from 'bcrypt'
 import PostgresErrorCode from "./error-handler-ps/postgress.error";
-import {User} from "../data-base/entity/user.entity";
 import {JwtService} from "@nestjs/jwt";
 
 @Injectable()
@@ -11,13 +10,11 @@ export class AuthService {
   constructor(private readonly usersService: UsersService,
               private readonly jwt: JwtService) {};
 
-  async signup(data: AuthDto): Promise<User> {
+  async signup(data: AuthDto): Promise<string> {
     const hashedPassword = bcrypt.hashSync(data.password, 10);
-    console.log(hashedPassword)
     try {
       const newUser = await this.usersService.create({...data, password: hashedPassword});
-      delete newUser.password
-      return newUser;
+      return this.signToken(newUser.userId)
     } catch (e) {
       if (e?.code === PostgresErrorCode.UniqueViolation) {
         throw new HttpException('User with that name already exists', HttpStatus.BAD_REQUEST);
@@ -26,12 +23,11 @@ export class AuthService {
     }
   }
 
-  async signIn(data: AuthDto): Promise<User> {
+  async signIn(data: AuthDto): Promise<string> {
     try {
       const user = await this.usersService.getByName(data.userName);
       await this.verifyPassword(data.password, user.password )
-      delete user.password
-      return user
+      return this.signToken(user.userId)
     } catch (e) {
       throw new HttpException('Wrong credentials provided', HttpStatus.BAD_REQUEST);
     }
@@ -47,10 +43,9 @@ export class AuthService {
     }
   }
 
-  signToken(userId: number, userName: string) {
+  signToken(userId: number) {
     const payload = {
-      sub: userId,
-      userName
+      sub: userId
     }
     return this.jwt.sign(payload)
   }

@@ -4,7 +4,7 @@ import {Folder} from "./folder.entity";
 @Entity()
 export class File {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  fileId: string;
 
   @Column({nullable: false})
   name: string;
@@ -21,6 +21,6 @@ export class File {
   @CreateDateColumn()
   created: Date;
 
-  @ManyToOne(() => Folder, folder => folder.files, )
+  @ManyToOne(() => Folder, folder => folder.files)
   parent_folder: Folder
 }
