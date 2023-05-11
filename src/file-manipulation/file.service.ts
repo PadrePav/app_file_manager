@@ -1,4 +1,4 @@
-import {HttpException, HttpStatus, Injectable, Logger} from "@nestjs/common";
+import {Injectable, Logger} from "@nestjs/common";
 import {File} from "../data-base/entity/file.entity";
 import {DataBaseFileService} from "../data-base/file/data-base.file.service";
 
