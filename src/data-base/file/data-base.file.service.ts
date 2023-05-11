@@ -5,6 +5,9 @@ import {Repository} from "typeorm";
 import {MinioClientService} from "../../minio-clinet/minio-client.service";
 import {Folder} from "../entity/folder.entity";
 import PostgresErrorCode from "../../auth/error-handler-ps/postgress.error";
+import MyError from "../../MyError/my.error";
+import {v4 as uuidv4} from "uuid";
+import {FileDto} from "../dto/file.dto";
 
 @Injectable()
 export class DataBaseFileService {
@@ -16,18 +19,8 @@ export class DataBaseFileService {
   }
 
   async uploadFile(upFile: Express.Multer.File, parentFolderId: string): Promise<File> {
-    // const name = upFile.originalname.substring(
-    //   0,
-    //   upFile.originalname.lastIndexOf('.')
-    // );
-    // this.fileRepository.findOne({
-    //   where: {
-    //     name,
-    //     parent_folder: parentFolderId
-    //   }
-    // })
-    const file = await this.minioService.uploadFile(upFile)
     try {
+      const file = this.parseFile(upFile.originalname)
       const parentFolder = await this.folderRepository.findOne({
         where: {
           folderId: parentFolderId
@@ -36,17 +29,72 @@ export class DataBaseFileService {
           files: true
         }
       });
-      const newFile = await this.fileRepository.create({...file, parent_folder: parentFolder})
-      parentFolder.files = [newFile];
-      await this.fileRepository.save(newFile);
-      await this.folderRepository.save(parentFolder);
-      return newFile;
+
+      // const fileExist = await this.folderRepository
+      //   .createQueryBuilder('folder')
+      //   .leftJoinAndSelect('folder.files', 'file')
+      //   .where('folder.folderId = :parentFolderId', { parentFolderId })
+      //   .andWhere('file.name = :name', { name: file.name })
+      //   .andWhere('file.type = :type', { type: file.type })
+      //   .getOne()
+
+      const fileExist = parentFolder.files.find(f => f.name === file.name && f.type === file.type)
+
+      if (!fileExist) {
+        await this.minioService.uploadFile({
+          filename: file.uid + file.name + file.type,
+          buffer: upFile.buffer
+        })
+        const newFile = await this.fileRepository.create({...file, size: upFile.size, parent_folder: parentFolder})
+        const files: File[] = parentFolder.files;
+        files.push(newFile)
+        parentFolder.files = files
+        await this.fileRepository.save(newFile);
+        await this.folderRepository.save(parentFolder);
+        return newFile;
+      }
+      MyError.create('A file with this name already exists in this folder')
     } catch (e) {
       if (e?.code === PostgresErrorCode.NotFound) {
-        throw new HttpException('The folder where you were going to upload the file does not exist', HttpStatus.NOT_FOUND)
+        throw new HttpException('The folder where you were going to upload the file does not exist',
+          HttpStatus.NOT_FOUND)
+      } else if (e.code === 555) {
+        throw new HttpException(e.message, HttpStatus.BAD_REQUEST)
       }
-      this.logger.log(e.message)
+      this.logger.log(e)
       throw new HttpException('An error occurred when adding to the database', HttpStatus.BAD_REQUEST)
+    }
+  }
+
+  private parseFile(filename: string): FileDto {
+    const name = filename.substring(
+      0,
+      filename.lastIndexOf('.')
+    );
+    const type = filename.substring(
+      filename.lastIndexOf('.'),
+      filename.length
+    );
+    const uid: string = uuidv4() + filename
+    return {
+      name,
+      type,
+      uid,
+      size: null
+    }
+  }
+
+  async deleteFile(fileId: string) {
+    try {
+      const file = await this.fileRepository.findOne({
+        where: {
+          fileId
+        }
+      })
+      await this.minioService.deleteFile(file.uid)
+      await this.fileRepository.softDelete(file)
+    } catch (e) {
+      throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST)
     }
   }
 }
