@@ -9,8 +9,10 @@ export class MinioClientService {
   private readonly bucketName = this.configService.get('MINIO_BUCKET_NAME')
   private readonly logger = new Logger('MinioService')
 
-  constructor(private readonly minio: MinioService,
-              private readonly configService: ConfigService) {}
+  constructor(
+    private readonly minio: MinioService,
+    private readonly configService: ConfigService
+  ) {}
 
   get client() {
     return this.minio.client;
@@ -27,10 +29,10 @@ export class MinioClientService {
   async deleteFile(filename: string): Promise<HttpStatus.OK> {
     try {
       await this.client.removeObject(this.bucketName, filename);
-      return HttpStatus.OK
+      return HttpStatus.OK;
     } catch (e) {
-      this.logger.log(e.message)
-      throw new HttpException('An error occurred when deleting a file', HttpStatus.NOT_FOUND)
+      this.logger.log(e.message);
+      throw new HttpException('An error occurred when deleting a file', HttpStatus.NOT_FOUND);
     }
   }
 }
