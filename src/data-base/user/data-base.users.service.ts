@@ -22,7 +22,6 @@ export class UsersService {
       }
     })
     if (user) {
-      console.log(user)
       return user
     }
     throw new HttpException('User with this email does not exist', HttpStatus.NOT_FOUND)

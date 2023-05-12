@@ -5,6 +5,7 @@ import {DataBaseModule} from "./data-base/data-base.module";
 import {AuthModule} from "./auth/auth.module";
 import {UsersModule} from "./data-base/user/data-base.users.module";
 import {FileModule} from "./file-manipulation/file.module";
+import {FolderModule} from "./folder-manipulation/folder.module";
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import {FileModule} from "./file-manipulation/file.module";
     AuthModule,
     UsersModule,
     FileModule,
+    FolderModule,
     ConfigModule.forRoot({ isGlobal: true }),
   ],
   controllers: [],
