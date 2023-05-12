@@ -42,10 +42,10 @@ export class DataBaseFileService {
 
       if (!fileExist) {
         await this.minioService.uploadFile({
-          filename: file.uid + file.name + file.type,
+          filename: file.uid,
           buffer: upFile.buffer
         })
-        const newFile = await this.fileRepository.create({...file, size: upFile.size, parent_folder: parentFolder})
+        const newFile = this.fileRepository.create({...file, size: upFile.size, parent_folder: parentFolder})
         const files: File[] = parentFolder.files;
         files.push(newFile)
         parentFolder.files = files
@@ -58,7 +58,7 @@ export class DataBaseFileService {
       if (e?.code === PostgresErrorCode.NotFound) {
         throw new HttpException('The folder where you were going to upload the file does not exist',
           HttpStatus.NOT_FOUND)
-      } else if (e.code === 555) {
+      } else if (e?.code === 555) {
         throw new HttpException(e.message, HttpStatus.BAD_REQUEST)
       }
       this.logger.log(e)
@@ -84,16 +84,25 @@ export class DataBaseFileService {
     }
   }
 
-  async deleteFile(fileId: string) {
+  async deleteFile(fileId: string): Promise<HttpStatus.OK> {
     try {
       const file = await this.fileRepository.findOne({
         where: {
           fileId
         }
       })
-      await this.minioService.deleteFile(file.uid)
-      await this.fileRepository.softDelete(file)
+      if (file) {
+        console.log(file.uid, 'db')
+        await this.minioService.deleteFile(file.uid)
+        await this.fileRepository.remove(file)
+        return HttpStatus.OK
+      }
+      MyError.create('File not found')
     } catch (e) {
+      if (e?.code === 555) {
+        throw new HttpException(e.message, HttpStatus.BAD_REQUEST)
+      }
+      this.logger.log(e.message)
       throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST)
     }
   }

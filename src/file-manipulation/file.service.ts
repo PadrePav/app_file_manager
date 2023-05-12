@@ -12,4 +12,8 @@ export class FileService {
   async uploadFile(upFile: Express.Multer.File, parentFolderId: string): Promise<File> {
     return await this.dbFileService.uploadFile(upFile, parentFolderId)
   }
+
+  async deleteFile(fileId: string) {
+    return await this.dbFileService.deleteFile(fileId)
+  }
 }
