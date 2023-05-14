@@ -1,20 +1,26 @@
 import {HttpException, HttpStatus, Injectable} from "@nestjs/common";
-import {UsersService} from "../data-base/user/data-base.users.service";
+import {DataBaseUsersService} from "../data-base/user/data-base.users.service";
 import AuthDto from "./dto/auth.dto";
 import * as bcrypt from 'bcrypt'
 import PostgresErrorCode from "./error-handler-ps/postgress.error";
-import {JwtService} from "@nestjs/jwt";
+import {TokenService} from "../token/token.service";
+import {User} from "../data-base/entity/user.entity";
+import {ReturnAuthDto} from "./dto/return.auth.dto";
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly usersService: UsersService,
-              private readonly jwt: JwtService) {};
+  constructor(private readonly usersService: DataBaseUsersService,
+              private readonly tokenService: TokenService) {};
 
-  async signup(data: AuthDto): Promise<string> {
-    const hashedPassword = bcrypt.hashSync(data.password, 10);
+  async signup(data: AuthDto): Promise<ReturnAuthDto> {
+    const hashedPassword: string = bcrypt.hashSync(data.password, 10); //Добавить в дотенв соль
     try {
-      const newUser = await this.usersService.create({...data, password: hashedPassword});
-      return this.signToken(newUser.userId)
+      const newUser: User = await this.usersService.create({...data, password: hashedPassword});
+      const token: string = this.tokenService.generateJwtToken(newUser.userName)
+      return {
+        userName: newUser.userName,
+        token
+      }
     } catch (e) {
       if (e?.code === PostgresErrorCode.UniqueViolation) {
         throw new HttpException('User with that name already exists', HttpStatus.BAD_REQUEST);
@@ -23,11 +29,15 @@ export class AuthService {
     }
   }
 
-  async signIn(data: AuthDto): Promise<string> {
+  async signIn(data: AuthDto): Promise<ReturnAuthDto> {
     try {
-      const user = await this.usersService.getByName(data.userName);
+      const user: User = await this.usersService.getByName(data.userName);
       await this.verifyPassword(data.password, user.password )
-      return this.signToken(user.userId)
+      const token: string = this.tokenService.generateJwtToken(user.userName)
+      return {
+        userName: user.userName,
+        token
+      }
     } catch (e) {
       throw new HttpException('Wrong credentials provided', HttpStatus.BAD_REQUEST);
     }
@@ -41,12 +51,5 @@ export class AuthService {
     if (!isPasswordMatching) {
       throw new HttpException('Wrong credentials provided', HttpStatus.BAD_REQUEST);
     }
-  }
-
-  signToken(userId: number) {
-    const payload = {
-      sub: userId
-    }
-    return this.jwt.sign(payload)
   }
 }
