@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import {Injectable} from '@nestjs/common';
 import {JwtService} from "@nestjs/jwt";
 
 @Injectable()
@@ -9,9 +9,7 @@ export class TokenService {
   generateJwtToken(userName: string): string {
     const payload = {
       userName
-    }
-    const jwt = this.jwt.sign(payload)
-    console.log(jwt)
-    return jwt
+    };
+    return this.jwt.sign(payload);
   }
 }

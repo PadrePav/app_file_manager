@@ -28,7 +28,7 @@ export class DataBaseUsersService {
   }
 
   async create(user: UserDto):Promise<User> {
-    const newUser = this.userRepository.create(user);
+    const newUser: User = this.userRepository.create(user);
     return await this.userRepository.save(newUser)
   }
 

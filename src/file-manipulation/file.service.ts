@@ -1,4 +1,4 @@
-import {Injectable, Logger} from "@nestjs/common";
+import {HttpStatus, Injectable, Logger} from "@nestjs/common";
 import {File} from "../data-base/entity/file.entity";
 import {DataBaseFileService} from "../data-base/file/data-base.file.service";
 import {FileStreamDto} from "../data-base/dto/file.dto";
@@ -11,14 +11,14 @@ export class FileService {
   }
 
   async uploadFile(upFile: Express.Multer.File, parentFolderId: string): Promise<File> {
-    return await this.dbFileService.uploadFile(upFile, parentFolderId)
+    return await this.dbFileService.uploadFile(upFile, parentFolderId);
   }
 
   async downloadFile(fileId: string):Promise<FileStreamDto> {
-    return await this.dbFileService.downloadFile(fileId)
+    return await this.dbFileService.downloadFile(fileId);
   }
 
-  async deleteFile(fileId: string) {
-    return await this.dbFileService.deleteFile(fileId)
+  async deleteFile(fileId: string): Promise<HttpStatus.NO_CONTENT> {
+    return await this.dbFileService.deleteFile(fileId);
   }
 }

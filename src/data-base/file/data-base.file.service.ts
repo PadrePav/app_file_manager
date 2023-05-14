@@ -21,8 +21,8 @@ export class DataBaseFileService {
 
   async uploadFile(upFile: Express.Multer.File, parentFolderId: string): Promise<File> {
     try {
-      const file = this.parseFile(upFile.originalname)
-      const parentFolder = await this.folderRepository.findOne({
+      const file: FileDto = this.parseFile(upFile.originalname);
+      const parentFolder: Folder = await this.folderRepository.findOne({
         where: {
           folderId: parentFolderId
         },
@@ -39,40 +39,40 @@ export class DataBaseFileService {
       //   .andWhere('file.type = :type', { type: file.type })
       //   .getOne()
 
-      const fileExist = parentFolder.files.find(f => f.name === file.name && f.type === file.type)
+      const fileExist: File = parentFolder.files.find(f => f.name === file.name && f.type === file.type);
 
       if (!fileExist) {
         await this.minioService.uploadFile({
           filename: file.uid,
           buffer: upFile.buffer
-        })
-        const newFile = this.fileRepository.create({...file, size: upFile.size, parent_folder: parentFolder})
+        });
+        const newFile: File = this.fileRepository.create({...file, size: upFile.size, parent_folder: parentFolder});
         const files: File[] = parentFolder.files;
-        files.push(newFile)
-        parentFolder.files = files
+        files.push(newFile);
+        parentFolder.files = files;
         await this.fileRepository.save(newFile);
         await this.folderRepository.save(parentFolder);
         return newFile;
       }
-      MyError.create('A file with this name already exists in this folder')
+      MyError.create('A file with this name already exists in this folder');
     } catch (e) {
       if (e?.code === PostgresErrorCode.NotFound) {
         throw new HttpException('The folder where you were going to upload the file does not exist',
-          HttpStatus.NOT_FOUND)
+          HttpStatus.NOT_FOUND);
       } else if (e?.code === 555) {
-        throw new HttpException(e.message, HttpStatus.BAD_REQUEST)
+        throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
       }
-      this.logger.log(e)
-      throw new HttpException('An error occurred when adding to the database', HttpStatus.BAD_REQUEST)
+      this.logger.log(e.message);
+      throw new HttpException('An error occurred when adding to the database', HttpStatus.BAD_REQUEST);
     }
   }
 
   private parseFile(filename: string): FileDto {
-    const name = filename.substring(
+    const name: string = filename.substring(
       0,
       filename.lastIndexOf('.')
     );
-    const type = filename.substring(
+    const type: string = filename.substring(
       filename.lastIndexOf('.'),
       filename.length
     );
@@ -82,12 +82,12 @@ export class DataBaseFileService {
       type,
       uid,
       size: null
-    }
+    };
   }
 
   async downloadFile(fileId: string):Promise<FileStreamDto> {
     try {
-      const file = await this.fileRepository.findOne({
+      const file: File = await this.fileRepository.findOne({
         where: {
           fileId
         }
@@ -98,31 +98,30 @@ export class DataBaseFileService {
         stream
       }
     } catch (e) {
-      this.logger.log(e.message)
+      this.logger.log(e.message);
       throw new HttpException('An error occurred while downloading the file', HttpStatus.NOT_FOUND);
     }
   }
 
   async deleteFile(fileId: string): Promise<HttpStatus.NO_CONTENT> {
     try {
-      const file = await this.fileRepository.findOne({
+      const file: File = await this.fileRepository.findOne({
         where: {
           fileId
         }
       })
       if (file) {
-        console.log(file.uid, 'db')
-        await this.minioService.deleteFile(file.uid)
-        await this.fileRepository.remove(file)
-        return HttpStatus.NO_CONTENT
+        await this.minioService.deleteFile(file.uid);
+        await this.fileRepository.remove(file);
+        return HttpStatus.NO_CONTENT;
       }
       MyError.create('File not found')
     } catch (e) {
       if (e?.code === 555) {
-        throw new HttpException(e.message, HttpStatus.BAD_REQUEST)
+        throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
       }
-      this.logger.log(e.message)
-      throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST)
+      this.logger.log(e.message);
+      throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
     }
   }
 }

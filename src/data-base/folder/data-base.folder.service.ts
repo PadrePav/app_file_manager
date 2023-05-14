@@ -6,6 +6,7 @@ import MyError from "../../MyError/my.error";
 import ReturnFolderDto from "../dto/return.folder.dto";
 import {DataBaseFileService} from "../file/data-base.file.service";
 import {User} from "../entity/user.entity";
+import {File} from "../entity/file.entity";
 
 
 @Injectable()
@@ -21,11 +22,11 @@ export class DataBaseFolderService {
 
   async createFolder(folderName: string, parentFolderId: string): Promise<Folder> {
     try {
-      const parentFolder = await this.findFolder(parentFolderId);
-      const folderExist = parentFolder.folders.find(f => f.name === folderName);
+      const parentFolder: Folder = await this.findFolder(parentFolderId);
+      const folderExist: Folder = parentFolder.folders.find(f => f.name === folderName);
 
       if (!folderExist) {
-        const folder = this.folderRepository.create({name: folderName, parent_folder: parentFolder});
+        const folder: Folder = this.folderRepository.create({name: folderName, parent_folder: parentFolder});
         await this.folderRepository.save(folder);
         console.log(parentFolder);
         return folder;
@@ -44,7 +45,7 @@ export class DataBaseFolderService {
 
   async openFolder(folderId: string): Promise<ReturnFolderDto> {
     try {
-      const folder = await this.findFolder(folderId)
+      const folder: Folder = await this.findFolder(folderId)
       return {
         folders: folder.folders,
         files: folder.files
@@ -55,10 +56,10 @@ export class DataBaseFolderService {
     }
   }
 
-  async deleteFolder(folderId: string) {
-    const folder = await this.findFolder(folderId);
+  async deleteFolder(folderId: string): Promise<HttpStatus.NO_CONTENT> {
+    const folder: Folder = await this.findFolder(folderId);
     await this.deleteFoldersRecursively(folder);
-    return HttpStatus.OK;
+    return HttpStatus.NO_CONTENT;
   }
 
   private async findFolder(folderId: string): Promise<Folder> {
@@ -74,8 +75,8 @@ export class DataBaseFolderService {
   }
 
   private async deleteFoldersRecursively(folder: Folder) {
-    const folders = folder.folders;
-    const files = folder.files;
+    const folders: Folder[] = folder.folders;
+    const files: File[] = folder.files;
     if (files) {
       for (const file of files) {
         await this.fileService.deleteFile(file.fileId);
