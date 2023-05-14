@@ -7,12 +7,12 @@ import {Folder} from "../entity/folder.entity";
 
 
 @Injectable()
-export class UsersService {
+export class DataBaseUsersService {
 
   constructor(@InjectRepository(User) private readonly userRepository: Repository<User>,
               @InjectRepository(Folder) private readonly folderRepository: Repository<Folder>) {}
 
-  async getByName(userName: string) {
+  async getByName(userName: string):Promise<User> {
     const user = await this.userRepository.findOne({
       where: {
         userName
@@ -24,13 +24,29 @@ export class UsersService {
     if (user) {
       return user
     }
-    throw new HttpException('User with this email does not exist', HttpStatus.NOT_FOUND)
+    throw new HttpException('User with this name does not exist', HttpStatus.NOT_FOUND)
   }
 
-  async create(user: UserDto) {
-    const newSpace = await this.folderRepository.create({ name: 'root' })
-    const newUser = await this.userRepository.create({ ...user, space: newSpace })
+  async create(user: UserDto):Promise<User> {
+    const newUser = this.userRepository.create(user);
     return await this.userRepository.save(newUser)
   }
 
+  async createOrGetRootFolder(user: User, folderName: string = 'root'):Promise<Folder> {
+    if (!user.space) {
+      const space: Folder = this.folderRepository.create({name: folderName})
+      user.space = space
+      await this.userRepository.save(user)
+      return space
+    }
+    return await this.folderRepository.findOne({
+      where: {
+        folderId: user.space.folderId
+      },
+      relations: {
+        folders: true,
+        files: true
+      }
+    })
+  }
 }
