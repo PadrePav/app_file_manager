@@ -8,8 +8,10 @@ export class TokenService {
 
   generateJwtToken(userName: string): string {
     const payload = {
-      sub: userName
+      userName
     }
-    return this.jwt.sign(payload)
+    const jwt = this.jwt.sign(payload)
+    console.log(jwt)
+    return jwt
   }
 }
