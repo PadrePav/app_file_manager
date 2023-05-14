@@ -1,3 +1,5 @@
+import * as Stream from "stream";
+
 export class FileDto {
   name: string;
 
@@ -6,4 +8,9 @@ export class FileDto {
   type: string;
 
   size: number;
+}
+
+export class FileStreamDto {
+  filename: string;
+  stream: Stream;
 }

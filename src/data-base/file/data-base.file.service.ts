@@ -7,7 +7,8 @@ import {Folder} from "../entity/folder.entity";
 import PostgresErrorCode from "../../auth/error-handler-ps/postgress.error";
 import MyError from "../../MyError/my.error";
 import {v4 as uuidv4} from "uuid";
-import {FileDto} from "../dto/file.dto";
+import {FileDto, FileStreamDto} from "../dto/file.dto";
+import * as Stream from "stream";
 
 @Injectable()
 export class DataBaseFileService {
@@ -81,6 +82,24 @@ export class DataBaseFileService {
       type,
       uid,
       size: null
+    }
+  }
+
+  async downloadFile(fileId: string):Promise<FileStreamDto> {
+    try {
+      const file = await this.fileRepository.findOne({
+        where: {
+          fileId
+        }
+      });
+      const stream: Stream = await this.minioService.downloadFile(file.uid)
+      return {
+        filename: file.name + file.type,
+        stream
+      }
+    } catch (e) {
+      this.logger.log(e.message)
+      throw new HttpException('An error occurred while downloading the file', HttpStatus.NOT_FOUND);
     }
   }
 

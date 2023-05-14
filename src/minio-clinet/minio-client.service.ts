@@ -2,6 +2,7 @@ import {HttpException, HttpStatus, Injectable, Logger} from '@nestjs/common';
 import {MinioService} from "nestjs-minio-client";
 import {ConfigService} from "@nestjs/config";
 import {MinioFileDto} from "./dto/minio-client.dto";
+import * as Stream from "stream";
 
 @Injectable()
 export class MinioClientService {
@@ -24,6 +25,15 @@ export class MinioClientService {
       file.filename,
       file.buffer,
     );
+  }
+
+  async downloadFile(filename: string): Promise<Stream> {
+    try {
+      return await this.client.getObject(this.bucketName, filename)
+    } catch (e) {
+      this.logger.log(e.message);
+      //Figure out how to handle errors
+    }
   }
 
   async deleteFile(filename: string): Promise<HttpStatus.OK> {
