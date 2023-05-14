@@ -103,7 +103,7 @@ export class DataBaseFileService {
     }
   }
 
-  async deleteFile(fileId: string): Promise<HttpStatus.OK> {
+  async deleteFile(fileId: string): Promise<HttpStatus.NO_CONTENT> {
     try {
       const file = await this.fileRepository.findOne({
         where: {
@@ -114,7 +114,7 @@ export class DataBaseFileService {
         console.log(file.uid, 'db')
         await this.minioService.deleteFile(file.uid)
         await this.fileRepository.remove(file)
-        return HttpStatus.OK
+        return HttpStatus.NO_CONTENT
       }
       MyError.create('File not found')
     } catch (e) {
