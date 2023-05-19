@@ -13,8 +13,8 @@ export class AuthService {
               private readonly tokenService: TokenService) {};
 
   async signup(data: AuthDto): Promise<ReturnAuthDto> {
-    const hashedPassword: string = bcrypt.hashSync(data.password, 10); //Добавить в дотенв соль
     try {
+      const hashedPassword: string = bcrypt.hashSync(data.password, 10); //Добавить в дотенв соль
       const newUser: User = await this.usersService.create({...data, password: hashedPassword});
       const token: string = this.tokenService.generateJwtToken(newUser.userName)
       return {

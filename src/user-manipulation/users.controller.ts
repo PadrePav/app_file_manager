@@ -1,4 +1,4 @@
-import {Controller, Get, Req, UseGuards} from "@nestjs/common";
+import {Body, Controller, Get, Param, Req, UseGuards} from "@nestjs/common";
 import {UsersService} from "./users.service";
 import {Folder} from "../data-base/entity/folder.entity";
 import {ApiTags} from "@nestjs/swagger";
@@ -9,11 +9,10 @@ export class UsersController {
   constructor(private readonly userService: UsersService) {}
 
   @ApiTags('API')
-  @UseGuards(JwtAuthGuard)
-  @Get()
-  async getRootFolder(@Req() req):Promise<Folder> {
-    const user = req.user
-    return await this.userService.getRootFolder(user.userName)
+  // @UseGuards(JwtAuthGuard)
+  @Get(':id')
+  async getRootFolder(@Param("id") user: string):Promise<Folder> {
+    return await this.userService.getRootFolder(user)
   }
 
 }
