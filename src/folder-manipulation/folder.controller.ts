@@ -26,4 +26,9 @@ export class FolderController {
     return await this.folderService.deleteFolder(id)
   }
 
+  @Get('path/:id')
+  pathToParentFolder(@Param('id') id: string) {
+    return this.folderService.pathToParentFolder(id)
+  }
+
 }

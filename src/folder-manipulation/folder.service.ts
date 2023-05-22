@@ -18,4 +18,8 @@ export class FolderService {
   async deleteFolder(folderId: string): Promise<HttpStatus.NO_CONTENT> {
     return await this.dbFolderService.deleteFolder(folderId)
   }
+
+  pathToParentFolder(folderId: string) {
+    return this.dbFolderService.pathToParentFolder(folderId)
+  }
 }

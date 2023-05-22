@@ -3,7 +3,7 @@ import {InjectRepository} from "@nestjs/typeorm";
 import {Folder} from "../entity/folder.entity";
 import {Repository} from "typeorm";
 import MyError from "../../MyError/my.error";
-import ReturnFolderDto from "../dto/return.folder.dto";
+import ReturnFolderDto, {PathParentFolderDto} from "../dto/return.folder.dto";
 import {DataBaseFileService} from "../file/data-base.file.service";
 import {User} from "../entity/user.entity";
 import {File} from "../entity/file.entity";
@@ -41,12 +41,46 @@ export class DataBaseFolderService {
     }
   }
 
+  async pathToParentFolder(folderId: string): Promise<PathParentFolderDto[]> { //: Promise<string[]>
+    const folder = await this.folderRepository.findOne({
+      where: {
+        folderId
+      },
+      relations: {
+        parent_folder: true
+      }
+    })
+    if (!folder) {
+      throw new HttpException('There is no such folder', HttpStatus.BAD_REQUEST)
+    }
 
+    const pathways: PathParentFolderDto[] = [{path: `/user/folder/${folder.folderId}`, folderName: folder.name}]
+    let parentFolder: Folder = folder
+    while (true) {
+      const tempParent = await this.folderRepository.findOne({
+        where: {
+          folderId: parentFolder.parent_folder.folderId
+        },
+        relations: {
+          parent_folder: true
+        }
+      })
+      if (!tempParent.parent_folder) {
+        break
+      }
+      parentFolder = tempParent
+      pathways.push({path: `/user/folder/${tempParent.folderId}`, folderName: tempParent.name})
+    }
+    pathways.push({path: '/user/root', folderName: 'Root'})
+    return pathways.reverse()
+
+  }
 
   async openFolder(folderId: string): Promise<ReturnFolderDto> {
     try {
       const folder: Folder = await this.findFolder(folderId)
       return {
+        folderId: folder.folderId,
         folders: folder.folders,
         files: folder.files
       }
