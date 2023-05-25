@@ -35,9 +35,9 @@ export class DataBaseFolderService {
       if (!parentFolder) {
         throw new HttpException('You have no rights to manipulate this folder', HttpStatus.BAD_REQUEST)
       }
-      const isFolderExist: Folder = parentFolder.folders.find(f => f.name === folderName);
+      const existedFolder: Folder = parentFolder.folders.find(f => f.name === folderName);
 
-      if (!isFolderExist) {
+      if (!existedFolder) {
         const folder: Folder = this.folderRepository.create({name: folderName, parent_folder: parentFolder, owner: user});
         const {id} = await this.folderRepository.save(folder);
         folder.path = `/user/folder/${id}`
