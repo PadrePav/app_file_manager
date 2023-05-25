@@ -2,7 +2,6 @@ import {HttpException, HttpStatus, Injectable, Logger} from "@nestjs/common";
 import {InjectRepository} from "@nestjs/typeorm";
 import {Folder} from "../entity/folder.entity";
 import {Repository} from "typeorm";
-import MyError from "../../MyError/my.error";
 import ReturnFolderDto, {PathParentFolderDto} from "../dto/return.folder.dto";
 import {DataBaseFileService} from "../file/data-base.file.service";
 import {User} from "../entity/user.entity";
@@ -37,15 +36,16 @@ export class DataBaseFolderService {
       }
       const existedFolder: Folder = parentFolder.folders.find(f => f.name === folderName);
 
-      if (!existedFolder) {
-        const folder: Folder = this.folderRepository.create({name: folderName, parent_folder: parentFolder, owner: user});
-        const {id} = await this.folderRepository.save(folder);
-        folder.path = `/user/folder/${id}`
-        await this.folderRepository.save(folder)
-        delete folder.owner
-        return folder;
+      if (existedFolder) {
+        throw new HttpException('A folder with this name already exists in this folder', HttpStatus.BAD_REQUEST)
       }
-      MyError.throwError('A folder with this name already exists in this folder');
+      const folder: Folder = this.folderRepository.create({name: folderName, parent_folder: parentFolder, owner: user});
+      const {id} = await this.folderRepository.save(folder);
+      folder.path = `/user/folder/${id}`
+      await this.folderRepository.save(folder)
+      delete folder.owner
+      return folder;
+
     } catch (e) {
       this.logger.log(e.message);
       throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
@@ -89,7 +89,15 @@ export class DataBaseFolderService {
 
   async getFolder(folderId: string): Promise<ReturnFolderDto> {
     try {
-      const folder: Folder = await this.findFolder(folderId, true)
+      const folder: Folder = await this.folderRepository.findOne({
+        where: {
+          id: folderId
+        },
+        relations: {
+          folders: true,
+          files: true,
+        }
+      });
       return {
         folderId: folder.id,
         folders: folder.folders,
@@ -119,26 +127,6 @@ export class DataBaseFolderService {
     });
     await this.deleteFoldersRecursively(folder);
     return HttpStatus.NO_CONTENT;
-  }
-
-  private async findFolder(folderId: string, relations: boolean): Promise<Folder> {
-    if (relations) {
-      return await this.folderRepository.findOne({
-        where: {
-          id: folderId
-        },
-        relations: {
-          folders: true,
-          files: true,
-        }
-      });
-    } else {
-      return await this.folderRepository.findOne({
-        where: {
-          id: folderId
-        }
-      });
-    }
   }
 
   private async deleteFoldersRecursively(folder: Folder) {
