@@ -3,6 +3,7 @@ import {FolderService} from "./folder.service";
 import {ApiTags} from "@nestjs/swagger";
 import FolderDto from "./dto/folder.dto";
 import {Folder} from "../data-base/entity/folder.entity";
+import {JwtAuthGuard} from "../guards/jwt.guard";
 
 @Controller('folder')
 export class FolderController {
@@ -38,7 +39,7 @@ export class FolderController {
   }
 
   @ApiTags('API')
-  // @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   @Get('path/:id')
   pathToParentFolder(@Param('id') folderId: string) {
     return this.folderService.pathToParentFolder(folderId)
