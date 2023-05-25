@@ -16,9 +16,6 @@ export class DataBaseUsersService {
     let user: User
     if (relation) {
       user = await this.userRepository.findOne({
-        select: {
-
-        },
         where: {
           userName
         }, relations: {
