@@ -87,7 +87,7 @@ export class DataBaseFolderService {
       }
     });
     return {
-      folderId: folder.id,
+      id: folder.id,
       folders: folder.folders,
       files: folder.files
     }

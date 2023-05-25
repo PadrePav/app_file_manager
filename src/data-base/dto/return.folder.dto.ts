@@ -2,7 +2,7 @@ import {Folder} from "../entity/folder.entity";
 import {File} from "../entity/file.entity";
 
 class ReturnFolderDto {
-  folderId: string
+  id: string
   folders: Folder[];
   files: File[];
 }
