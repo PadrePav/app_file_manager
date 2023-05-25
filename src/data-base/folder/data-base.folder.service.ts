@@ -22,18 +22,23 @@ export class DataBaseFolderService {
 
   async createFolder(folderName: string, parentFolderId: string, userName: string): Promise<Folder> {
     try {
-      const user: User = await this.userService.getUserByName(userName)
+      const user: User = await this.userService.getUserByName(userName);
+      const isFolderAccessible: Folder = await this.folderRepository.findOne({
+        where: {
+          id: parentFolderId,
+          owner: user
+        }
+      });
+      if (!isFolderAccessible) {
+        throw new HttpException('You have no rights to manipulate this folder', HttpStatus.BAD_REQUEST)
+      }
       const parentFolder: Folder = await this.folderRepository.findOne({
         where: {
-          owner: user,
           id: parentFolderId
         }, relations: {
           folders: true
         }
       });
-      if (!parentFolder) {
-        throw new HttpException('You have no rights to manipulate this folder', HttpStatus.BAD_REQUEST)
-      }
       const existedFolder: Folder = parentFolder.folders.find(f => f.name === folderName);
 
       if (existedFolder) {
