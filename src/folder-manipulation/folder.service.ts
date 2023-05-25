@@ -11,8 +11,8 @@ export class FolderService {
     return await this.dbFolderService.createFolder(folderName, parentFolderId, userName)
   }
 
-  async getFolder(folderId: string): Promise<ReturnFolderDto> {
-    return await this.dbFolderService.getFolder(folderId)
+  async getFolder(folderId: string, userName: string): Promise<ReturnFolderDto> {
+    return await this.dbFolderService.getFolder(folderId, userName)
   }
 
   async deleteFolder(folderId: string, userName: string): Promise<HttpStatus.NO_CONTENT> {

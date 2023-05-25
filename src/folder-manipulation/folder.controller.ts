@@ -23,8 +23,11 @@ export class FolderController {
   @ApiTags('API')
   // @UseGuards(JwtAuthGuard)
   @Get(':id')
-  async getFolder(@Param('id') folderId: string) {
-    return await this.folderService.getFolder(folderId)
+  async getFolder(
+    @Param('id') folderId: string,
+    @Query('userName') userName: string
+    ) {
+    return await this.folderService.getFolder(folderId, userName)
   }
 
   @ApiTags('API')
