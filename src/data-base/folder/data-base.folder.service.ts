@@ -139,7 +139,7 @@ export class DataBaseFolderService {
     const files: File[] = folder.files;
     if (files) {
       for (const file of files) {
-        await this.fileService.deleteFile(file.id);
+        await this.fileService.deleteFile(file.id, folder.owner.userName);
       }
     }
     if (folders) {
