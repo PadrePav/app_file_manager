@@ -15,7 +15,7 @@ export class AuthService {
   async signup(data: AuthDto): Promise<ReturnAuthDto> {
     try {
       const hashedPassword: string = bcrypt.hashSync(data.password, 10); //Добавить в дотенв соль
-      const newUser: User = await this.usersService.create({...data, password: hashedPassword});
+      const newUser: User = await this.usersService.createUser({...data, password: hashedPassword});
       const token: string = this.tokenService.generateJwtToken(newUser.userName)
       return {
         userName: newUser.userName,
@@ -31,7 +31,7 @@ export class AuthService {
 
   async signIn(data: AuthDto): Promise<ReturnAuthDto> {
     try {
-      const user: User = await this.usersService.getByName(data.userName);
+      const user: User = await this.usersService.getUserByName(data.userName);
       await this.verifyPassword(data.password, user.password )
       const token: string = this.tokenService.generateJwtToken(user.userName)
       return {

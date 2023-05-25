@@ -19,7 +19,6 @@ import {JwtAuthGuard} from "../guards/jwt.guard";
 export class FileController {
   constructor(private readonly fileService: FileService) {}
 
-  //добавить на фронт запрос через боди
   @ApiTags('API')
   @ApiResponse({status: 201, type: File})
   @UseGuards(JwtAuthGuard)
@@ -33,10 +32,9 @@ export class FileController {
   }
 
 
-  //добавить на фронт запрос через боди
-  //и убрать без айдишника
+
   @ApiTags('API')
-  // @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   @Get('download/:id')
   async downloadFile(
     @Param('id') fileId: string,
@@ -49,7 +47,6 @@ export class FileController {
     return new StreamableFile(file.stream);
   }
 
-  //добавить на фронт запрос через боди
   @ApiTags('API')
   @HttpCode(204)
   @UseGuards(JwtAuthGuard)

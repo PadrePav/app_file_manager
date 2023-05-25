@@ -10,7 +10,7 @@ export class FolderController {
   constructor(private readonly folderService: FolderService) {}
 
   @ApiTags('API')
-  // @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   @Post('create')
   async createFolder(
     @Query('userName') userName: string,
@@ -21,7 +21,7 @@ export class FolderController {
   }
 
   @ApiTags('API')
-  // @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
   async getFolder(
     @Param('id') folderId: string,
@@ -32,7 +32,7 @@ export class FolderController {
 
   @ApiTags('API')
   @HttpCode(204)
-  // @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   @Delete('delete/:id')
   async deleteFolder (
     @Param('id') folderId: string,

@@ -22,7 +22,7 @@ export class File {
   @CreateDateColumn()
   created: Date;
 
-  @Column()
+  @Column({nullable: true})
   path: string
 
   @ManyToOne(() => Folder, folder => folder.files)
