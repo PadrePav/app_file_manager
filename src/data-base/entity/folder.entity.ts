@@ -1,7 +1,7 @@
 import {
   Column,
   CreateDateColumn,
-  Entity, JoinColumn,
+  Entity,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
@@ -33,6 +33,5 @@ export class Folder {
   files: File[];
 
   @ManyToOne(() => User)
-  @JoinColumn()
   owner: User;
 }
