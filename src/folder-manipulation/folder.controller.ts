@@ -1,34 +1,47 @@
-import {Body, Controller, Delete, Get, HttpCode, Param, Post} from "@nestjs/common";
+import {Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Query, UseGuards} from "@nestjs/common";
 import {FolderService} from "./folder.service";
 import {ApiTags} from "@nestjs/swagger";
 import FolderDto from "./dto/folder.dto";
+import {Folder} from "../data-base/entity/folder.entity";
 
 @Controller('folder')
 export class FolderController {
   constructor(private readonly folderService: FolderService) {}
 
   @ApiTags('API')
-  @Post(':id')
-  async createFolder(@Param('id') id: string, @Body() folder: FolderDto) {
-    return await this.folderService.createFolder(folder.folderName, id)
+  // @UseGuards(JwtAuthGuard)
+  @Post('create')
+  async createFolder(
+    @Query('userName') userName: string,
+    @Query('parentFolderId') parentFolderId: string,
+    @Body() folder: FolderDto
+  ): Promise<Folder> {
+    return await this.folderService.createFolder(folder.folderName, parentFolderId, userName)
   }
 
   @ApiTags('API')
+  // @UseGuards(JwtAuthGuard)
   @Get(':id')
-  async openFolder(@Param('id') id: string) {
-    return await this.folderService.openFolder(id)
+  async getFolder(@Param('id') folderId: string) {
+    return await this.folderService.getFolder(folderId)
   }
 
   @ApiTags('API')
   @HttpCode(204)
-  @Delete(':id')
-  async deleteFolder (@Param('id') id: string) {
-    return await this.folderService.deleteFolder(id)
+  // @UseGuards(JwtAuthGuard)
+  @Delete('delete/:id')
+  async deleteFolder (
+    @Param('id') folderId: string,
+    @Query('userName') userName: string
+  ): Promise<HttpStatus.NO_CONTENT> {
+    return await this.folderService.deleteFolder(folderId, userName)
   }
 
+  @ApiTags('API')
+  // @UseGuards(JwtAuthGuard)
   @Get('path/:id')
-  pathToParentFolder(@Param('id') id: string) {
-    return this.folderService.pathToParentFolder(id)
+  pathToParentFolder(@Param('id') folderId: string) {
+    return this.folderService.pathToParentFolder(folderId)
   }
 
 }

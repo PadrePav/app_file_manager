@@ -7,6 +7,7 @@ import ReturnFolderDto, {PathParentFolderDto} from "../dto/return.folder.dto";
 import {DataBaseFileService} from "../file/data-base.file.service";
 import {User} from "../entity/user.entity";
 import {File} from "../entity/file.entity";
+import {DataBaseUsersService} from "../user/data-base.users.service";
 
 
 @Injectable()
@@ -14,37 +15,47 @@ export class DataBaseFolderService {
   private readonly logger: Logger;
   constructor(
     @InjectRepository(Folder) private readonly folderRepository: Repository<Folder>,
-    @InjectRepository(User) private readonly userRepository: Repository<User>,
+    private readonly userService: DataBaseUsersService,
     private readonly fileService: DataBaseFileService
   ) {
     this.logger = new Logger('DataBaseFolderService')
   }
 
-  async createFolder(folderName: string, parentFolderId: string): Promise<Folder> {
+  async createFolder(folderName: string, parentFolderId: string, userName: string): Promise<Folder> {
     try {
-      const parentFolder: Folder = await this.findFolder(parentFolderId);
-      const folderExist: Folder = parentFolder.folders.find(f => f.name === folderName);
+      const user: User = await this.userService.getUserByName(userName)
+      const parentFolder: Folder = await this.folderRepository.findOne({
+        where: {
+          owner: user,
+          id: parentFolderId
+        }, relations: {
+          folders: true
+        }
+      });
+      if (!parentFolder) {
+        throw new HttpException('You have no rights to manipulate this folder', HttpStatus.BAD_REQUEST)
+      }
+      const isFolderExist: Folder = parentFolder.folders.find(f => f.name === folderName);
 
-      if (!folderExist) {
-        const folder: Folder = this.folderRepository.create({name: folderName, parent_folder: parentFolder});
-        await this.folderRepository.save(folder);
-        console.log(parentFolder);
+      if (!isFolderExist) {
+        const folder: Folder = this.folderRepository.create({name: folderName, parent_folder: parentFolder, owner: user});
+        const {id} = await this.folderRepository.save(folder);
+        folder.path = `/user/folder/${id}`
+        await this.folderRepository.save(folder)
+        delete folder.owner
         return folder;
       }
-      MyError.create('A folder with this name already exists in this folder');
+      MyError.throwError('A folder with this name already exists in this folder');
     } catch (e) {
-      if (e.code === 555) {
-        throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
-      }
       this.logger.log(e.message);
-      throw new HttpException('There was an error when creating the folder', HttpStatus.BAD_REQUEST);
+      throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
     }
   }
 
-  async pathToParentFolder(folderId: string): Promise<PathParentFolderDto[]> { //: Promise<string[]>
+  async pathToParentFolder(folderId: string): Promise<PathParentFolderDto[]> {
     const folder = await this.folderRepository.findOne({
       where: {
-        folderId
+        id: folderId
       },
       relations: {
         parent_folder: true
@@ -54,33 +65,33 @@ export class DataBaseFolderService {
       throw new HttpException('There is no such folder', HttpStatus.BAD_REQUEST)
     }
 
-    const pathways: PathParentFolderDto[] = [{path: `/user/folder/${folder.folderId}`, folderName: folder.name}]
+    const pathways: PathParentFolderDto[] = [{path: folder.path, folderName: folder.name}]
     let parentFolder: Folder = folder
     while (true) {
       const tempParent = await this.folderRepository.findOne({
         where: {
-          folderId: parentFolder.parent_folder.folderId
+          id: parentFolder.parent_folder.id
         },
         relations: {
           parent_folder: true
         }
       })
       if (!tempParent.parent_folder) {
+        pathways.push({path: tempParent.path, folderName: tempParent.name})
         break
       }
       parentFolder = tempParent
-      pathways.push({path: `/user/folder/${tempParent.folderId}`, folderName: tempParent.name})
+      pathways.push({path: `/user/folder/${tempParent.id}`, folderName: tempParent.name})
     }
-    pathways.push({path: '/user/root', folderName: 'Root'})
     return pathways.reverse()
 
   }
 
-  async openFolder(folderId: string): Promise<ReturnFolderDto> {
+  async getFolder(folderId: string): Promise<ReturnFolderDto> {
     try {
-      const folder: Folder = await this.findFolder(folderId)
+      const folder: Folder = await this.findFolder(folderId, true)
       return {
-        folderId: folder.folderId,
+        folderId: folder.id,
         folders: folder.folders,
         files: folder.files
       }
@@ -90,22 +101,44 @@ export class DataBaseFolderService {
     }
   }
 
-  async deleteFolder(folderId: string): Promise<HttpStatus.NO_CONTENT> {
-    const folder: Folder = await this.findFolder(folderId);
+  async deleteFolder(folderId: string, userName: string): Promise<HttpStatus.NO_CONTENT> {
+    const folder: Folder = await this.folderRepository.findOne({
+      where: {
+        id: folderId,
+        owner: {
+          userName
+        }
+      },
+      relations: {
+        folders: {
+          owner: true
+        },
+        files: true,
+        owner: true
+      }
+    });
     await this.deleteFoldersRecursively(folder);
     return HttpStatus.NO_CONTENT;
   }
 
-  private async findFolder(folderId: string): Promise<Folder> {
-    return await this.folderRepository.findOne({
-      where: {
-        folderId
-      },
-      relations: {
-        folders: true,
-        files: true,
-      }
-    });
+  private async findFolder(folderId: string, relations: boolean): Promise<Folder> {
+    if (relations) {
+      return await this.folderRepository.findOne({
+        where: {
+          id: folderId
+        },
+        relations: {
+          folders: true,
+          files: true,
+        }
+      });
+    } else {
+      return await this.folderRepository.findOne({
+        where: {
+          id: folderId
+        }
+      });
+    }
   }
 
   private async deleteFoldersRecursively(folder: Folder) {
@@ -113,12 +146,12 @@ export class DataBaseFolderService {
     const files: File[] = folder.files;
     if (files) {
       for (const file of files) {
-        await this.fileService.deleteFile(file.fileId);
+        await this.fileService.deleteFile(file.id);
       }
     }
     if (folders) {
       for (const folder1 of folders) {
-        await this.deleteFolder(folder1.folderId);
+        await this.deleteFolder(folder1.id, folder1.owner.userName);
       }
     }
     await this.folderRepository.remove(folder);
