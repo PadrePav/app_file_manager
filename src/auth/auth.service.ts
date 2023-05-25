@@ -1,6 +1,6 @@
 import {HttpException, HttpStatus, Injectable} from "@nestjs/common";
 import {DataBaseUsersService} from "../data-base/user/data-base.users.service";
-import AuthDto from "./dto/auth.dto";
+import AuthDto, {AuthSignInDto} from "./dto/auth.dto";
 import * as bcrypt from 'bcrypt'
 import PostgresErrorCode from "./error-handler-ps/postgress.error";
 import {TokenService} from "../token/token.service";
@@ -29,7 +29,7 @@ export class AuthService {
     }
   }
 
-  async signIn(data: AuthDto): Promise<ReturnAuthDto> {
+  async signIn(data: AuthSignInDto): Promise<ReturnAuthDto> {
     try {
       const user: User = await this.usersService.getUserByName(data.userName);
       await this.verifyPassword(data.password, user.password )

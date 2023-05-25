@@ -14,3 +14,15 @@ export default class AuthDto {
   @MinLength(5)
   password: string;
 }
+
+export class AuthSignInDto {
+  @ApiProperty()
+  @IsNotEmpty()
+  @IsString()
+  userName: string;
+
+  @ApiProperty()
+  @IsNotEmpty()
+  @IsString()
+  password: string;
+}

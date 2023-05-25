@@ -33,7 +33,7 @@ export class FolderController {
   @ApiTags('API')
   @HttpCode(204)
   @UseGuards(JwtAuthGuard)
-  @Delete('delete/:id')
+  @Delete(':id')
   async deleteFolder (
     @Param('id') folderId: string,
     @Query('userName') userName: string

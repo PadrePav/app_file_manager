@@ -22,15 +22,6 @@ export class DataBaseFileService {
 
   async uploadFile(upFile: Express.Multer.File, userName, parentFolderId): Promise<HttpStatus.CREATED> {
     const user: User = await this.userService.getUserByName(userName);
-    const isFolderAccessible: Folder = await this.folderRepository.findOne({
-      where: {
-        id: parentFolderId,
-        owner: user
-      }
-    });
-    if (!isFolderAccessible) {
-      throw new HttpException('You have no rights to manipulate this folder', HttpStatus.BAD_REQUEST)
-    }
     const existedParenFolder: Folder = await this.folderRepository.findOne({
       where: {
         id: parentFolderId
@@ -38,6 +29,16 @@ export class DataBaseFileService {
     });
     if (!existedParenFolder) {
       throw new HttpException('The folder where you were going to upload the file does not exist', HttpStatus.NOT_FOUND)
+    }
+    const isFolderAccessible: Folder = await this.folderRepository.findOne({
+      where: {
+        id: parentFolderId,
+      }, relations: {
+        owner: true
+      }
+    });
+    if (isFolderAccessible.owner.userName !== userName) {
+      throw new HttpException('You have no rights to manipulate this folder', HttpStatus.BAD_REQUEST)
     }
     const parentFolder: Folder = await this.folderRepository.findOne({
       where: {
@@ -88,14 +89,18 @@ export class DataBaseFileService {
   }
 
   async downloadFile(fileId: string, userName: string):Promise<FileStreamDto> {
-    const user: User = await this.userService.getUserByName(userName);
+    await this.userService.getUserByName(userName);
     const file: File = await this.fileRepository.findOne({
       where: {
-        id: fileId,
-        owner: user
+        id: fileId
+      }, relations: {
+        owner: true
       }
     });
     if (!file) {
+      throw new HttpException('This file does not exist', HttpStatus.NOT_FOUND)
+    }
+    if (file.owner.userName !== userName) {
       throw new HttpException('You have no rights to manipulate this file', HttpStatus.BAD_REQUEST)
     }
     console.log(file)
@@ -107,24 +112,24 @@ export class DataBaseFileService {
   }
 
   async deleteFile(fileId: string, userName: string): Promise<HttpStatus.NO_CONTENT> {
-    const user: User = await this.userService.getUserByName(userName);
-    const isFileAccessible: File = await this.fileRepository.findOne({
-      where: {
-        id: fileId,
-        owner: user
-      }
-    });
-    if (!isFileAccessible) {
-      throw new HttpException('You have no rights to manipulate this file', HttpStatus.BAD_REQUEST)
-    }
+    await this.userService.getUserByName(userName);
     const file: File = await this.fileRepository.findOne({
       where: {
-        id: fileId,
-        owner: user
+        id: fileId
       }
     });
     if (!file) {
       throw new HttpException('File not found', HttpStatus.NOT_FOUND)
+    }
+    const isFileAccessible: File = await this.fileRepository.findOne({
+      where: {
+        id: fileId,
+      }, relations: {
+        owner: true
+      }
+    });
+    if (isFileAccessible.owner.userName !== userName) {
+      throw new HttpException('You have no rights to manipulate this file', HttpStatus.BAD_REQUEST)
     }
     await this.minioService.deleteFile(file.uid);
     await this.fileRepository.remove(file);

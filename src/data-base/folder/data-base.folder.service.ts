@@ -131,6 +131,8 @@ export class DataBaseFolderService {
     const existedParentFolder: Folder = await this.folderRepository.findOne({
       where: {
         id: folderId
+      }, relations: {
+        owner: true
       }
     });
     if (!existedParentFolder) {
@@ -141,12 +143,7 @@ export class DataBaseFolderService {
         HttpStatus.NOT_FOUND
     )}
     const user: User = await this.userService.getUserByName(userName);
-    const isFolderAccessible: Folder = await this.folderRepository.findOne({
-      where: {
-        id: folderId,
-        owner: user
-      }
-    });
+    const isFolderAccessible = existedParentFolder.owner.userName === userName
     if (!isFolderAccessible) {
       throw new HttpException('You have no rights to manipulate this folder', HttpStatus.BAD_REQUEST)
     }
