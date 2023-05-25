@@ -2,7 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  JoinColumn,
+  JoinColumn, ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
@@ -13,7 +13,7 @@ export class User {
   @PrimaryGeneratedColumn({
     type: 'bigint'
   })
-  userId: number;
+  id: number;
 
   @Column({nullable: false, unique: true})
   userName: string;
@@ -21,10 +21,11 @@ export class User {
   @Column({nullable: false})
   password: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({nullable: false})
   created: Date
 
   @OneToOne(() => Folder, {cascade: true})
   @JoinColumn()
-  space: Folder;
+  rootFolder: Folder;
+
 }
