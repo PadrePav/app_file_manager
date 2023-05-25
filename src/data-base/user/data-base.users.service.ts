@@ -12,41 +12,56 @@ export class DataBaseUsersService {
   constructor(@InjectRepository(User) private readonly userRepository: Repository<User>,
               @InjectRepository(Folder) private readonly folderRepository: Repository<Folder>) {}
 
-  async getByName(userName: string):Promise<User> {
-    const user = await this.userRepository.findOne({
-      where: {
-        userName
-      },
-      relations: {
-        space: true
-      }
-    })
-    if (user) {
-      return user
+  async getUserByName(userName: string, relation: boolean = false):Promise<User> {
+    let user: User
+    if (relation) {
+      user = await this.userRepository.findOne({
+        select: {
+
+        },
+        where: {
+          userName
+        }, relations: {
+          rootFolder: {
+            folders: {
+              folders: false,
+              files: false
+            },
+            files: true,
+            owner: true
+          }
+        }
+      })
+    } else {
+      user = await this.userRepository.findOne({
+        where: {
+          userName
+        }
+      })
     }
-    throw new HttpException('User with this name does not exist', HttpStatus.NOT_FOUND)
+    if (!user) {
+      throw new HttpException('User with this name does not exist', HttpStatus.NOT_FOUND)
+    }
+    return user
   }
 
-  async create(user: UserDto):Promise<User> {
+  async createUser(user: UserDto):Promise<User> {
     const newUser: User = this.userRepository.create(user);
     return await this.userRepository.save(newUser)
   }
 
-  async createOrGetRootFolder(user: User, folderName: string = 'root'):Promise<Folder> {
-    if (!user.space) {
-      const space: Folder = this.folderRepository.create({name: folderName})
-      user.space = space
+  async getOrCreateRootFolder(user: User, folderName: string = 'Root'):Promise<Folder> {
+
+    if (!user.rootFolder) {
+      console.log(user, 'false')
+      const rootFolder: Folder = this.folderRepository.create({name: folderName, path: '/user/root', owner: user})
+      user.rootFolder = rootFolder
       await this.userRepository.save(user)
-      return space
+      delete rootFolder.owner
+      return rootFolder
     }
-    return await this.folderRepository.findOne({
-      where: {
-        folderId: user.space.folderId
-      },
-      relations: {
-        folders: true,
-        files: true
-      }
-    })
+    console.log(user.rootFolder, 'no root')
+    delete user.rootFolder.owner
+    return user.rootFolder
   }
 }
