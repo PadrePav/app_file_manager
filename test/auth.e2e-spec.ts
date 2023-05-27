@@ -66,7 +66,7 @@ describe('Auth', () => {
   });
 
   describe('Sign-in', async () => {
-    it('should be authorized', (done) => {
+    it('should be authorized', () => {
       const dto: AuthSignupDto = {
         userName: 'test',
         password: 'testPassword'
