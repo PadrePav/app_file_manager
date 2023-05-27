@@ -27,7 +27,7 @@ export class FileController {
   uploadFile(@UploadedFile() file: Express.Multer.File,
                    @Query('userName') userName,
                    @Query('parentFolderId') parentFolderId
-  ) {
+  ): Promise<File> {
    return this.fileService.uploadFile(file, userName, parentFolderId)
   }
 

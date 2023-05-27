@@ -10,10 +10,10 @@ async function bootstrap() {
       origin: ['http://localhost:3000']
     }
   });
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true }))
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
 
-  const configService = app.get(ConfigService)
-  const port = configService.get('SERVER_PORT')
+  const configService = app.get(ConfigService);
+  const port = configService.get('SERVER_PORT');
 
   const config = new DocumentBuilder()
     .setTitle('File manager')
@@ -22,7 +22,7 @@ async function bootstrap() {
     .addTag('API')
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document)
+  SwaggerModule.setup('api', app, document);
 
   await app.listen(port);
 }

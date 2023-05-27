@@ -43,6 +43,17 @@ export class DataBaseUsersService {
   }
 
   async createUser(user: UserDto):Promise<User> {
+    const existedUser: User = await this.userRepository.findOne({
+      select: {
+        userName: true
+      },
+      where: {
+        userName: user.userName
+      }
+    });
+    if (existedUser) {
+      throw new HttpException('User with that name already exists', HttpStatus.BAD_REQUEST)
+    }
     const newUser: User = this.userRepository.create(user);
     return await this.userRepository.save(newUser)
   }
@@ -57,7 +68,6 @@ export class DataBaseUsersService {
       delete rootFolder.owner
       return rootFolder
     }
-    console.log(user.rootFolder, 'no root')
     delete user.rootFolder.owner
     return user.rootFolder
   }

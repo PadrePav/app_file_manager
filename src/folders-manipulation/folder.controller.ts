@@ -11,34 +11,35 @@ export class FolderController {
 
   @ApiTags('API')
   @UseGuards(JwtAuthGuard)
+  @HttpCode(201)
   @Post('create')
-  async createFolder(
+  createFolder(
     @Query('userName') userName: string,
     @Query('parentFolderId') parentFolderId: string,
     @Body() folder: FolderDto
   ): Promise<Folder> {
-    return await this.folderService.createFolder(folder.folderName, parentFolderId, userName)
+    return this.folderService.createFolder(folder.folderName, parentFolderId, userName)
   }
 
   @ApiTags('API')
   @UseGuards(JwtAuthGuard)
   @Get(':id')
-  async getFolder(
+  getFolder(
     @Param('id') folderId: string,
     @Query('userName') userName: string
     ) {
-    return await this.folderService.getFolder(folderId, userName)
+    return this.folderService.getFolder(folderId, userName)
   }
 
   @ApiTags('API')
   @HttpCode(204)
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
-  async deleteFolder (
+  deleteFolder (
     @Param('id') folderId: string,
     @Query('userName') userName: string
-  ): Promise<HttpStatus.NO_CONTENT> {
-    return await this.folderService.deleteFolder(folderId, userName)
+  ) {
+    return this.folderService.deleteFolder(folderId, userName)
   }
 
   @ApiTags('API')

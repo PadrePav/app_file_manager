@@ -20,7 +20,7 @@ export class DataBaseFileService {
     this.logger = new Logger('FileService')
   }
 
-  async uploadFile(upFile: Express.Multer.File, userName, parentFolderId): Promise<HttpStatus.CREATED> {
+  async uploadFile(upFile: Express.Multer.File, userName, parentFolderId): Promise<File> {
     const user: User = await this.userService.getUserByName(userName);
     const existedParenFolder: Folder = await this.folderRepository.findOne({
       where: {
@@ -67,7 +67,10 @@ export class DataBaseFileService {
     const {id} = await this.fileRepository.save(newFile);
     newFile.path = `/user/folder/${id}`
     await this.fileRepository.save(newFile);
-    return HttpStatus.CREATED;
+    delete newFile.owner
+    delete newFile.uid
+    delete newFile.parent_folder
+    return newFile
   }
 
   private parseFileName(filename: string): FileDto {

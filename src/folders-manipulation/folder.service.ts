@@ -15,7 +15,7 @@ export class FolderService {
     return await this.dbFolderService.getFolder(folderId, userName)
   }
 
-  async deleteFolder(folderId: string, userName: string): Promise<HttpStatus.NO_CONTENT> {
+  async deleteFolder(folderId: string, userName: string) {
     return await this.dbFolderService.deleteFolder(folderId, userName)
   }
 

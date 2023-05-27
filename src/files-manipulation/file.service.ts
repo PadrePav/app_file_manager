@@ -1,6 +1,7 @@
 import {HttpStatus, Injectable, Logger} from "@nestjs/common";
 import {DataBaseFileService} from "../data-base/file/data-base.file.service";
 import {FileStreamDto} from "../data-base/dto/file.dto";
+import {File} from "../data-base/entity/file.entity";
 
 @Injectable()
 export class FileService {
@@ -9,7 +10,7 @@ export class FileService {
     this.logger = new Logger('FileService')
   }
 
-  async uploadFile(upFile: Express.Multer.File, userName: string, parentFolderId: string) {
+  async uploadFile(upFile: Express.Multer.File, userName: string, parentFolderId: string): Promise<File> {
     return await this.dbFileService.uploadFile(upFile, userName, parentFolderId);
   }
 

@@ -93,7 +93,7 @@ export class DataBaseFolderService {
     }
   }
 
-  async deleteFolder(folderId: string, userName: string): Promise<HttpStatus.NO_CONTENT> {
+  async deleteFolder(folderId: string, userName: string) {
     await this.dataValidityCheckAndReturnUser(folderId, userName, false)
     const folder: Folder = await this.folderRepository.findOne({
       where: {
@@ -108,7 +108,6 @@ export class DataBaseFolderService {
       }
     });
     await this.deleteFoldersRecursively(folder);
-    return HttpStatus.NO_CONTENT;
   }
 
   private async deleteFoldersRecursively(folderToDelete: Folder) {
