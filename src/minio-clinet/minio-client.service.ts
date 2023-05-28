@@ -20,11 +20,16 @@ export class MinioClientService {
   }
 
   async uploadFile(file: MinioFileDto): Promise<void> {
-    await this.client.putObject(
-      this.bucketName,
-      file.filename,
-      file.buffer,
-    );
+    try {
+      await this.client.putObject(
+        this.bucketName,
+        file.filename,
+        file.buffer,
+      );
+    } catch (e) {
+      this.logger.log(e.message)
+      throw new HttpException('An error occurred while uploading a file to the server', HttpStatus.INTERNAL_SERVER_ERROR)
+    }
   }
 
   async downloadFile(filename: string): Promise<Stream> {
@@ -32,7 +37,7 @@ export class MinioClientService {
       return await this.client.getObject(this.bucketName, filename)
     } catch (e) {
       this.logger.log(e.message);
-      //Figure out how to handle errors
+      throw new HttpException('An error occurred while uploading to the server', HttpStatus.INTERNAL_SERVER_ERROR)
     }
   }
 

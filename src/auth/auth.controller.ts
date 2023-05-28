@@ -1,6 +1,6 @@
 import {AuthService} from "./auth.service";
-import {Body, Controller, HttpCode, HttpException, HttpStatus, Post} from "@nestjs/common";
-import AuthDto from "./dto/auth.dto";
+import {Body, Controller, HttpCode, Post} from "@nestjs/common";
+import AuthSignupDto, {AuthSignInDto} from "./dto/authSignupDto";
 import {ApiResponse, ApiTags} from "@nestjs/swagger";
 import {ReturnAuthDto} from "./dto/return.auth.dto";
 
@@ -11,10 +11,7 @@ export class AuthController {
   @ApiTags('API')
   @ApiResponse({status: 201, type: ReturnAuthDto})
   @Post('sign-up')
-  signup(@Body() dto: AuthDto) {
-    if (dto.userName.includes(' ')) {
-      throw new HttpException('The name cannot contain spaces', HttpStatus.BAD_REQUEST)
-    }
+  signup(@Body() dto: AuthSignupDto): Promise<ReturnAuthDto> {
     return this.authService.signup(dto)
   }
 
@@ -22,7 +19,7 @@ export class AuthController {
   @ApiResponse({status: 200, type: ReturnAuthDto})
   @HttpCode(200)
   @Post('sign-in')
-  signIn(@Body() dto: AuthDto) {
+  signIn(@Body() dto: AuthSignInDto): Promise<ReturnAuthDto> {
     return this.authService.signIn(dto)
   }
 }

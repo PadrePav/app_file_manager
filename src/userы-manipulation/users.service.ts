@@ -7,8 +7,8 @@ import {Folder} from "../data-base/entity/folder.entity";
 export class UsersService {
   constructor(private readonly dbUserService: DataBaseUsersService) {}
 
-  async getRootFolder(userName: string):Promise<Folder> {
-    const user: User = await this.dbUserService.getByName(userName)
-    return await this.dbUserService.createOrGetRootFolder(user)
+  async getOrCreateRootFolder(userName: string):Promise<Folder> {
+    const user: User = await this.dbUserService.getUserByName(userName, true)
+    return await this.dbUserService.getOrCreateRootFolder(user)
   }
 }

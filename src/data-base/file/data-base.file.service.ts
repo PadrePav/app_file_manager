@@ -4,70 +4,76 @@ import {File} from "../entity/file.entity";
 import {Repository} from "typeorm";
 import {MinioClientService} from "../../minio-clinet/minio-client.service";
 import {Folder} from "../entity/folder.entity";
-import PostgresErrorCode from "../../auth/error-handler-ps/postgress.error";
-import MyError from "../../MyError/my.error";
 import {v4 as uuidv4} from "uuid";
 import {FileDto, FileStreamDto} from "../dto/file.dto";
 import * as Stream from "stream";
+import {User} from "../entity/user.entity";
+import {DataBaseUsersService} from "../user/data-base.users.service";
 
 @Injectable()
 export class DataBaseFileService {
   private readonly logger: Logger
   constructor(@InjectRepository(File) private readonly fileRepository: Repository<File>,
               @InjectRepository(Folder) private readonly folderRepository: Repository<Folder>,
+              private readonly userService: DataBaseUsersService,
               private readonly minioService: MinioClientService) {
     this.logger = new Logger('FileService')
   }
 
-  async uploadFile(upFile: Express.Multer.File, parentFolderId: string): Promise<File> {
-    try {
-      const file: FileDto = this.parseFile(upFile.originalname);
-      const parentFolder: Folder = await this.folderRepository.findOne({
-        where: {
-          folderId: parentFolderId
-        },
-        relations: {
-          files: true
-        }
-      });
-
-      // const fileExist = await this.folderRepository
-      //   .createQueryBuilder('folder')
-      //   .leftJoinAndSelect('folder.files', 'file')
-      //   .where('folder.folderId = :parentFolderId', { parentFolderId })
-      //   .andWhere('file.name = :name', { name: file.name })
-      //   .andWhere('file.type = :type', { type: file.type })
-      //   .getOne()
-
-      const fileExist: File = parentFolder.files.find(f => f.name === file.name && f.type === file.type);
-
-      if (!fileExist) {
-        await this.minioService.uploadFile({
-          filename: file.uid,
-          buffer: upFile.buffer
-        });
-        const newFile: File = this.fileRepository.create({...file, size: upFile.size, parent_folder: parentFolder});
-        const files: File[] = parentFolder.files;
-        files.push(newFile);
-        parentFolder.files = files;
-        await this.fileRepository.save(newFile);
-        await this.folderRepository.save(parentFolder);
-        return newFile;
+  async uploadFile(upFile: Express.Multer.File, userName, parentFolderId): Promise<File> {
+    const user: User = await this.userService.getUserByName(userName);
+    const existedParenFolder: Folder = await this.folderRepository.findOne({
+      where: {
+        id: parentFolderId
       }
-      MyError.create('A file with this name already exists in this folder');
-    } catch (e) {
-      if (e?.code === PostgresErrorCode.NotFound) {
-        throw new HttpException('The folder where you were going to upload the file does not exist',
-          HttpStatus.NOT_FOUND);
-      } else if (e?.code === 555) {
-        throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
-      }
-      this.logger.log(e.message);
-      throw new HttpException('An error occurred when adding to the database', HttpStatus.BAD_REQUEST);
+    });
+    if (!existedParenFolder) {
+      throw new HttpException('The folder where you were going to upload the file does not exist', HttpStatus.NOT_FOUND)
     }
+    const isFolderAccessible: Folder = await this.folderRepository.findOne({
+      where: {
+        id: parentFolderId,
+      }, relations: {
+        owner: true
+      }
+    });
+    if (isFolderAccessible.owner.userName !== userName) {
+      throw new HttpException('You have no rights to manipulate this folder', HttpStatus.BAD_REQUEST)
+    }
+    const parentFolder: Folder = await this.folderRepository.findOne({
+      where: {
+        id: parentFolderId
+      },
+      relations: {
+        files: true
+      }
+    });
+    const file: FileDto = this.parseFileName(upFile.originalname);
+    const existedFile: File = parentFolder.files.find(f => f.name === file.name && f.type === file.type);
+
+    if (existedFile) {
+      throw new HttpException('A file with this name already exists in this folder', HttpStatus.BAD_REQUEST)
+    }
+    await this.minioService.uploadFile({
+      filename: file.uid,
+      buffer: upFile.buffer
+    });
+    const newFile: File = this.fileRepository.create({
+      ...file,
+      size: upFile.size,
+      parent_folder: parentFolder,
+      owner: user
+    });
+    const {id} = await this.fileRepository.save(newFile);
+    newFile.path = `/user/folder/${id}`
+    await this.fileRepository.save(newFile);
+    delete newFile.owner
+    delete newFile.uid
+    delete newFile.parent_folder
+    return newFile
   }
 
-  private parseFile(filename: string): FileDto {
+  private parseFileName(filename: string): FileDto {
     const name: string = filename.substring(
       0,
       filename.lastIndexOf('.')
@@ -85,43 +91,51 @@ export class DataBaseFileService {
     };
   }
 
-  async downloadFile(fileId: string):Promise<FileStreamDto> {
-    try {
-      const file: File = await this.fileRepository.findOne({
-        where: {
-          fileId
-        }
-      });
-      const stream: Stream = await this.minioService.downloadFile(file.uid)
-      return {
-        filename: file.name + file.type,
-        stream
+  async downloadFile(fileId: string, userName: string):Promise<FileStreamDto> {
+    await this.userService.getUserByName(userName);
+    const file: File = await this.fileRepository.findOne({
+      where: {
+        id: fileId
+      }, relations: {
+        owner: true
       }
-    } catch (e) {
-      this.logger.log(e.message);
-      throw new HttpException('An error occurred while downloading the file', HttpStatus.NOT_FOUND);
+    });
+    if (!file) {
+      throw new HttpException('This file does not exist', HttpStatus.NOT_FOUND)
+    }
+    if (file.owner.userName !== userName) {
+      throw new HttpException('You have no rights to manipulate this file', HttpStatus.BAD_REQUEST)
+    }
+    console.log(file)
+    const stream: Stream = await this.minioService.downloadFile(file.uid)
+    return {
+      filename: file.name + file.type,
+      stream
     }
   }
 
-  async deleteFile(fileId: string): Promise<HttpStatus.NO_CONTENT> {
-    try {
-      const file: File = await this.fileRepository.findOne({
-        where: {
-          fileId
-        }
-      })
-      if (file) {
-        await this.minioService.deleteFile(file.uid);
-        await this.fileRepository.remove(file);
-        return HttpStatus.NO_CONTENT;
+  async deleteFile(fileId: string, userName: string): Promise<HttpStatus.NO_CONTENT> {
+    await this.userService.getUserByName(userName);
+    const file: File = await this.fileRepository.findOne({
+      where: {
+        id: fileId
       }
-      MyError.create('File not found')
-    } catch (e) {
-      if (e?.code === 555) {
-        throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
-      }
-      this.logger.log(e.message);
-      throw new HttpException('Something went wrong', HttpStatus.BAD_REQUEST);
+    });
+    if (!file) {
+      throw new HttpException('File not found', HttpStatus.NOT_FOUND)
     }
+    const isFileAccessible: File = await this.fileRepository.findOne({
+      where: {
+        id: fileId,
+      }, relations: {
+        owner: true
+      }
+    });
+    if (isFileAccessible.owner.userName !== userName) {
+      throw new HttpException('You have no rights to manipulate this file', HttpStatus.BAD_REQUEST)
+    }
+    await this.minioService.deleteFile(file.uid);
+    await this.fileRepository.remove(file);
+    return HttpStatus.NO_CONTENT;
   }
 }

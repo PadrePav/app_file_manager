@@ -2,11 +2,11 @@ import {HttpException, HttpStatus, Injectable, Logger} from "@nestjs/common";
 import {InjectRepository} from "@nestjs/typeorm";
 import {Folder} from "../entity/folder.entity";
 import {Repository} from "typeorm";
-import MyError from "../../MyError/my.error";
-import ReturnFolderDto from "../dto/return.folder.dto";
+import ReturnFolderDto, {PathParentFolderDto} from "../dto/return.folder.dto";
 import {DataBaseFileService} from "../file/data-base.file.service";
 import {User} from "../entity/user.entity";
 import {File} from "../entity/file.entity";
+import {DataBaseUsersService} from "../user/data-base.users.service";
 
 
 @Injectable()
@@ -14,79 +14,157 @@ export class DataBaseFolderService {
   private readonly logger: Logger;
   constructor(
     @InjectRepository(Folder) private readonly folderRepository: Repository<Folder>,
-    @InjectRepository(User) private readonly userRepository: Repository<User>,
+    private readonly userService: DataBaseUsersService,
     private readonly fileService: DataBaseFileService
   ) {
     this.logger = new Logger('DataBaseFolderService')
   }
 
-  async createFolder(folderName: string, parentFolderId: string): Promise<Folder> {
-    try {
-      const parentFolder: Folder = await this.findFolder(parentFolderId);
-      const folderExist: Folder = parentFolder.folders.find(f => f.name === folderName);
-
-      if (!folderExist) {
-        const folder: Folder = this.folderRepository.create({name: folderName, parent_folder: parentFolder});
-        await this.folderRepository.save(folder);
-        console.log(parentFolder);
-        return folder;
-      }
-      MyError.create('A folder with this name already exists in this folder');
-    } catch (e) {
-      if (e.code === 555) {
-        throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
-      }
-      this.logger.log(e.message);
-      throw new HttpException('There was an error when creating the folder', HttpStatus.BAD_REQUEST);
-    }
-  }
-
-
-
-  async openFolder(folderId: string): Promise<ReturnFolderDto> {
-    try {
-      const folder: Folder = await this.findFolder(folderId)
-      return {
-        folders: folder.folders,
-        files: folder.files
-      }
-    } catch (e) {
-      this.logger.log(e.message);
-      throw new HttpException('Folder not found', HttpStatus.NOT_FOUND);
-    }
-  }
-
-  async deleteFolder(folderId: string): Promise<HttpStatus.NO_CONTENT> {
-    const folder: Folder = await this.findFolder(folderId);
-    await this.deleteFoldersRecursively(folder);
-    return HttpStatus.NO_CONTENT;
-  }
-
-  private async findFolder(folderId: string): Promise<Folder> {
-    return await this.folderRepository.findOne({
+  async createFolder(folderName: string, parentFolderId: string, userName: string): Promise<Folder> {
+    const user: User = await this.dataValidityCheckAndReturnUser(parentFolderId, userName, true)
+    const parentFolder: Folder = await this.folderRepository.findOne({
       where: {
-        folderId
+        id: parentFolderId
+      }, relations: {
+        folders: true
+      }
+    });
+    const existedFolder: Folder = parentFolder.folders.find(f => f.name === folderName);
+    if (existedFolder) {
+      throw new HttpException('A folder with this name already exists in this folder', HttpStatus.BAD_REQUEST)
+    }
+    const folder: Folder = this.folderRepository.create({name: folderName, parent_folder: parentFolder, owner: user});
+    const {id} = await this.folderRepository.save(folder);
+    folder.path = `/user/folder/${id}`
+    await this.folderRepository.save(folder)
+    delete folder.owner
+    return folder;
+  }
+
+  async pathToParentFolder(folderId: string): Promise<PathParentFolderDto[]> {
+    const folder = await this.folderRepository.findOne({
+      where: {
+        id: folderId
+      },
+      relations: {
+        parent_folder: true
+      }
+    })
+    if (!folder) {
+      throw new HttpException('There is no such folder', HttpStatus.BAD_REQUEST)
+    }
+    const pathways: PathParentFolderDto[] = [{path: folder.path, folderName: folder.name}]
+    let parentFolder: Folder = folder
+    while (true) {
+      const tempParent = await this.folderRepository.findOne({
+        where: {
+          id: parentFolder.parent_folder.id
+        },
+        relations: {
+          parent_folder: true
+        }
+      })
+      if (!tempParent.parent_folder) {
+        pathways.push({path: tempParent.path, folderName: tempParent.name})
+        break
+      }
+      parentFolder = tempParent
+      pathways.push({path: `/user/folder/${tempParent.id}`, folderName: tempParent.name})
+    }
+    return pathways.reverse()
+
+  }
+
+  async getFolder(folderId: string, userName: string): Promise<ReturnFolderDto> {
+    await this.dataValidityCheckAndReturnUser(folderId, userName, false)
+    const folder: Folder = await this.folderRepository.findOne({
+      where: {
+        id: folderId
       },
       relations: {
         folders: true,
         files: true,
       }
     });
+    return {
+      id: folder.id,
+      folders: folder.folders,
+      files: folder.files
+    }
   }
 
-  private async deleteFoldersRecursively(folder: Folder) {
-    const folders: Folder[] = folder.folders;
-    const files: File[] = folder.files;
+  async changeFolderName(folderName: string, folderId: string, userName: string) {
+    console.log(folderName, folderId, userName)
+    await this.dataValidityCheckAndReturnUser(folderId, userName, false);
+    const folder: Folder = await this.folderRepository.findOne({
+      where: {
+        id: folderId
+      }, relations: {
+        parent_folder: {
+          folders: true
+        }
+      }
+    });
+    const existedFolder: Folder = folder.parent_folder.folders.find(f => f.name === folderName);
+    if (existedFolder) {
+      throw new HttpException('A folder with this name already exists in this folder', HttpStatus.BAD_REQUEST);
+    }
+    await this.folderRepository.save({...folder, name: folderName});
+  }
+
+  async deleteFolder(folderId: string, userName: string) {
+    await this.dataValidityCheckAndReturnUser(folderId, userName, false)
+    const folder: Folder = await this.folderRepository.findOne({
+      where: {
+        id: folderId,
+      },
+      relations: {
+        folders: {
+          owner: true
+        },
+        files: true,
+        owner: true
+      }
+    });
+    await this.deleteFoldersRecursively(folder);
+  }
+
+  private async deleteFoldersRecursively(folderToDelete: Folder) {
+    const folders: Folder[] = folderToDelete.folders;
+    const files: File[] = folderToDelete.files;
     if (files) {
       for (const file of files) {
-        await this.fileService.deleteFile(file.fileId);
+        await this.fileService.deleteFile(file.id, folderToDelete.owner.userName);
       }
     }
     if (folders) {
-      for (const folder1 of folders) {
-        await this.deleteFolder(folder1.folderId);
+      for (const folder of folders) {
+        await this.deleteFolder(folder.id, folder.owner.userName);
       }
     }
-    await this.folderRepository.remove(folder);
+    await this.folderRepository.remove(folderToDelete);
+  }
+
+  private async dataValidityCheckAndReturnUser(folderId: string, userName: string, isParentFolder: boolean): Promise<User> {
+    const existedParentFolder: Folder = await this.folderRepository.findOne({
+      where: {
+        id: folderId
+      }, relations: {
+        owner: true
+      }
+    });
+    if (!existedParentFolder) {
+      throw new HttpException(
+        isParentFolder ?
+        'The parent folder was not found' :
+        "Folder not found",
+        HttpStatus.NOT_FOUND
+    )}
+    const user: User = await this.userService.getUserByName(userName);
+    const isFolderAccessible = existedParentFolder.owner.userName === userName
+    if (!isFolderAccessible) {
+      throw new HttpException('You have no rights to manipulate this folder', HttpStatus.BAD_REQUEST)
+    }
+    return user
   }
 }

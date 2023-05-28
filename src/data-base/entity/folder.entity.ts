@@ -7,17 +7,21 @@ import {
   PrimaryGeneratedColumn,
 } from "typeorm";
 import {File} from "./file.entity";
+import {User} from "./user.entity";
 
 @Entity()
 export class Folder {
   @PrimaryGeneratedColumn('uuid')
-  folderId: string;
+  id: string;
 
   @Column({nullable: false})
   name: string;
 
   @CreateDateColumn()
   created: Date;
+
+  @Column({nullable: true})
+  path: string
 
   @ManyToOne(() => Folder, (folder) => folder.folders)
   parent_folder: Folder;
@@ -27,4 +31,7 @@ export class Folder {
 
   @OneToMany(() => File, file => file.parent_folder)
   files: File[];
+
+  @ManyToOne(() => User)
+  owner: User;
 }
