@@ -93,6 +93,25 @@ export class DataBaseFolderService {
     }
   }
 
+  async changeFolderName(folderName: string, folderId: string, userName: string) {
+    console.log(folderName, folderId, userName)
+    await this.dataValidityCheckAndReturnUser(folderId, userName, false);
+    const folder: Folder = await this.folderRepository.findOne({
+      where: {
+        id: folderId
+      }, relations: {
+        parent_folder: {
+          folders: true
+        }
+      }
+    });
+    const existedFolder: Folder = folder.parent_folder.folders.find(f => f.name === folderName);
+    if (existedFolder) {
+      throw new HttpException('A folder with this name already exists in this folder', HttpStatus.BAD_REQUEST);
+    }
+    await this.folderRepository.save({...folder, name: folderName});
+  }
+
   async deleteFolder(folderId: string, userName: string) {
     await this.dataValidityCheckAndReturnUser(folderId, userName, false)
     const folder: Folder = await this.folderRepository.findOne({

@@ -15,6 +15,10 @@ export class FolderService {
     return await this.dbFolderService.getFolder(folderId, userName)
   }
 
+  async changeFolderName(folderName: string, folderId: string, userName: string) {
+    return await this.dbFolderService.changeFolderName(folderName, folderId, userName)
+  }
+
   async deleteFolder(folderId: string, userName: string) {
     return await this.dbFolderService.deleteFolder(folderId, userName)
   }

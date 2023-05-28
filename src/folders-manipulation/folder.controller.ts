@@ -1,4 +1,4 @@
-import {Body, Controller, Delete, Get, HttpCode, Param, Post, Query, UseGuards} from "@nestjs/common";
+import {Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, UseGuards} from "@nestjs/common";
 import {FolderService} from "./folder.service";
 import {ApiTags} from "@nestjs/swagger";
 import FolderDto from "./dto/folder.dto";
@@ -16,9 +16,9 @@ export class FolderController {
   createFolder(
     @Query('userName') userName: string,
     @Query('parentFolderId') parentFolderId: string,
-    @Body() folder: FolderDto
+    @Body() folderDto: FolderDto
   ): Promise<Folder> {
-    return this.folderService.createFolder(folder.folderName, parentFolderId, userName)
+    return this.folderService.createFolder(folderDto.folderName, parentFolderId, userName)
   }
 
   @ApiTags('API')
@@ -29,6 +29,18 @@ export class FolderController {
     @Query('userName') userName: string
     ) {
     return this.folderService.getFolder(folderId, userName)
+  }
+
+  @ApiTags('API')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id')
+  changeName(
+    @Param('id') folderId: string,
+    @Query('userName') userName: string,
+    @Body() folderDto: FolderDto
+) {
+    return this.folderService.changeFolderName(folderDto.folderName, folderId, userName)
   }
 
   @ApiTags('API')
